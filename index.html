@@ -94,6 +94,23 @@ a.link:hover{color:#8A6410; border-bottom-color:#8A6410;}
 .tag{font-size:11.5px; border:1px solid #C6BEAA; border-radius:3px; padding:1px 7px; color:#5C5648;}
 .tag.money{background:var(--pink); color:var(--paper); border-color:var(--pink); font-weight:700; font-family:ui-monospace,Menlo,monospace;}
 .tag.cat{background:#DED5BF; border-color:#DED5BF; color:#3B372E; font-weight:700;}
+.tag.via{font-family:ui-monospace,Menlo,monospace; font-size:10.5px; text-transform:lowercase;}
+.tag.hot{background:var(--hot,#B4462F); border-color:var(--hot,#B4462F); color:#FDF8EC; font-weight:700;}
+.shotdot{flex:none; font-size:13px; padding-top:2px; opacity:.75;}
+
+/* ---- 新增案子的表單 ---- */
+.drop.form .fld{margin-top:12px;}
+.drop.form .fld:first-child{margin-top:0;}
+.row2{display:grid; grid-template-columns:1fr 1fr; gap:10px;}
+.inline-date{margin-left:4px; padding:5px 8px; background:var(--panel2); border:1px solid var(--line);
+  border-radius:6px; color:var(--ink); font-family:inherit; font-size:12.5px;}
+.drop.form .hint{display:block; font-size:11.5px; color:var(--dim); margin-top:6px;}
+
+/* ---- 截圖 ---- */
+.shot{display:block; max-width:100%; border-radius:6px; border:1px solid var(--line); margin-top:6px;}
+.shot.sm{max-width:110px; margin:0;}
+.shotpick{display:flex; gap:10px; align-items:flex-start; margin-top:6px;}
+.shotpick p{margin:0 0 4px; word-break:break-all;}
 .cond{font-size:12.5px; color:#4A463C; margin-top:5px;}
 .from{font-size:11.5px; color:var(--faint); margin-top:4px;}
 .acts{display:flex; gap:12px; align-items:center; margin-top:8px; flex-wrap:wrap;}
@@ -197,6 +214,9 @@ a.link:hover{color:#8A6410; border-bottom-color:#8A6410;}
   #root{padding:16px 12px 50px;}
   .sheet{padding:20px 14px;}
   .item{grid-template-columns:16px 1fr;}
+  .row2{grid-template-columns:1fr;}
+  .shotpick{flex-direction:column;}
+  .shot.sm{max-width:100%;}
   .want{grid-column:2;}
   .panel{grid-template-columns:1fr; gap:0;}
   .sheet-acts{margin-left:0; width:100%;}
@@ -221,12 +241,9 @@ window.CONFIG = {
     messagingSenderId: "608659086547",
     appId: "1:608659086547:web:a64830996ae2dc86cd8826",
   },
-  // 2. Worker 部署完的網址
-  workerUrl: "https://liushukan-api.rockangel061992.workers.dev",
-  // 3. 跟 Worker 的 APP_KEY 一模一樣的那串亂碼
-  //    這串會出現在公開的前端，本來就不是機密，只是防路人亂打你的 API
-  appKey: "lsk-c8z3su8n5xke8eubv82twz39qfsbvaig",
 };
+// 這個版本不接任何 AI：案子資料由你手填，鼠點連結看原始貼文。
+// 不需要 API 金鑰、不花錢、沒有額度限制，資料也不會離開你的 Firebase。
 </script>
 
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
@@ -247,19 +264,55 @@ const PAST = [S.NONE, S.DEAL, S.SKIP];
 const COLOR = { [S.NEW]:"#8B8894", [S.WANT]:"#C9902A", [S.SENT]:"#3E7CB1",
   [S.ASK]:"#7A5EA8", [S.NONE]:"#A5A090", [S.DEAL]:"#3B8C68", [S.SKIP]:"#A5A090" };
 
-const TERMS = ["長期合作", "短期／單次", "沒註明"];
-const CATS = ["長片", "短影片", "混合", "其他"];
-const LONG_SIG = ["長片","課程","podcast","紀錄","訪談","講座","節目","全片","完整版","說明會","教學影片","直播存檔"];
-const SHORT_SIG = ["短影音","短片","reels","shorts","tiktok","限動","直式","精華","短版","切短","快剪","預告"];
+const CATS = ["長片", "短片", "短影音", "廣告", "其他"];
+const SOURCES = ["LINE 社群", "Threads", "FB", "其他"];
+const VIAS = ["mail", "LINE", "私訊"];
 
-function deriveCat(g){
-  const t = `${g.title||""} ${g.type||""} ${(g.points||[]).join(" ")}`.toLowerCase();
-  const long = LONG_SIG.some(k=>t.includes(k)), short = SHORT_SIG.some(k=>t.includes(k));
-  if (long && short) return "混合";
-  if (long) return "長片";
-  if (short) return "短影片";
-  return "其他";
+/* 圖片存進 Firestore 之前先縮，免得超過單一文件 1MB 上限 */
+const SHOT_MAX_EDGE = 1400;
+const SHOT_QUALITY = 0.72;
+const SHOT_MAX_BYTES = 700 * 1024;
+
+function shrinkImage(file){
+  return new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      const scale = Math.min(1, SHOT_MAX_EDGE / Math.max(img.width, img.height));
+      const w = Math.round(img.width * scale), h = Math.round(img.height * scale);
+      const cv = document.createElement("canvas");
+      cv.width = w; cv.height = h;
+      cv.getContext("2d").drawImage(img, 0, 0, w, h);
+      let q = SHOT_QUALITY, out = cv.toDataURL("image/jpeg", q);
+      // 還是太大就再壓，最多降三次
+      for (let i = 0; i < 3 && out.length > SHOT_MAX_BYTES; i++) {
+        q -= 0.15;
+        out = cv.toDataURL("image/jpeg", Math.max(q, 0.3));
+      }
+      if (out.length > SHOT_MAX_BYTES) return reject(new Error("too-big"));
+      resolve(out);
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error("bad-image")); };
+    img.src = url;
+  });
 }
+
+const blankForm = () => ({
+  link: "",
+  title: "",
+  cat: "",
+  budget: "",
+  seenAt: new Date().toISOString().slice(0,10),
+  source: "",
+  vias: [],
+  contact: "",
+  hasDeadline: false,
+  deadline: "",
+  notes: "",
+  shot: "",          // 縮好的 dataURL
+  shotName: "",
+});
 
 const DEFAULT_PROFILE = {
   name: "鼠｜影片剪輯師",
@@ -267,11 +320,6 @@ const DEFAULT_PROFILE = {
   portfolio: "",
   contact: "Email：\nIG：\nLINE ID：",
 };
-const profileToText = (p) => [p.name, p.intro,
-  p.portfolio ? `作品集：${p.portfolio}` : "",
-  p.contact && p.contact.trim() ? `可回覆的聯絡方式：\n${p.contact.trim()}` : ""
-].filter(Boolean).join("\n");
-
 const today = () => new Date().toISOString().slice(0,10);
 const md = (d) => d ? `${Number(d.slice(5,7))}/${Number(d.slice(8,10))}` : "";
 const href = (u) => /^https?:\/\//i.test(u) ? u : `https://${u}`;
@@ -324,16 +372,21 @@ function authMsg(e){
 
 const emailOf = (u) => ((u && u.email) || "").trim().toLowerCase();
 
-/* ---------- Claude（走自己的 Worker） ---------- */
-async function ask(prompt, search){
-  const r = await fetch(window.CONFIG.workerUrl, {
-    method: "POST",
-    headers: { "Content-Type": "application/json", "x-app-key": window.CONFIG.appKey },
-    body: JSON.stringify({ prompt, search: !!search }),
-  });
-  const d = await r.json().catch(() => ({}));
-  if (!r.ok) throw new Error(d.error || `錯誤 ${r.status}`);
-  return d.text || "";
+/* ---------- 投遞訊息模板（本機組字串，不呼叫任何服務） ---------- */
+function draftPitch(g, p){
+  const what = g.cat && g.cat !== "其他" ? g.cat : "影片";
+  const lines = [
+    `您好，看到您在${g.source || "社群"}徵${what}的案子${g.title ? `（${g.title}）` : ""}，想投遞試試。`,
+    "",
+    p.name ? `我是${p.name}。` : "",
+    (p.intro || "").trim(),
+  ];
+  if (p.portfolio) lines.push("", `作品集：${p.portfolio}`);
+  if (g.budget) lines.push("", `看到預算寫${g.budget}，這個範圍我可以配合，細節可以再談。`);
+  lines.push("", "如果方向合適，隨時聯絡我：");
+  if ((p.contact || "").trim()) lines.push(p.contact.trim());
+  lines.push("", "謝謝您撥時間看，期待有機會合作。");
+  return lines.filter((l, i, a) => !(l === "" && a[i - 1] === "")).join("\n").trim();
 }
 
 /* ---------- 登入 ---------- */
@@ -396,10 +449,9 @@ function App(){
   const [ready, setReady] = useState(false);
   const [gigs, setGigs] = useState([]);
   const [profile, setProfile] = useState(DEFAULT_PROFILE);
-  const [raw, setRaw] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
-  const [groupBy, setGroupBy] = useState("合作型態");
+  const [groupBy, setGroupBy] = useState("片型");
   const [openId, setOpenId] = useState(null);
   const [showPast, setShowPast] = useState(false);
   const [showCard, setShowCard] = useState(false);
@@ -407,10 +459,10 @@ function App(){
   const [draft, setDraft] = useState(DEFAULT_PROFILE);
   const [showDrop, setShowDrop] = useState(false);
   const [toast, setToast] = useState("");
-  const [pitchBusy, setPitchBusy] = useState(null);
-  const [tip, setTip] = useState("");
-  const [tipBusy, setTipBusy] = useState(false);
+  const [form, setForm] = useState(() => blankForm());
+  const [shots, setShots] = useState({});   // { [gigId]: dataURL | "none" }
   const fileRef = useRef(null);
+  const shotRef = useRef(null);
 
   const flash = (m) => { setToast(m); setTimeout(()=>setToast(""), 2400); };
 
@@ -483,7 +535,7 @@ function App(){
       (snap) => {
         const list = snap.docs.map(d => {
           const x = { id: d.id, ...d.data() };
-          return { ...x, cat: CATS.includes(x.cat) ? x.cat : deriveCat(x) };
+          return { ...x, cat: CATS.includes(x.cat) ? x.cat : "其他" };
         });
         list.sort((a,b) => (b.seenAt||"").localeCompare(a.seenAt||""));
         setGigs(list);
@@ -521,7 +573,6 @@ function App(){
     } catch { flash("改不了，只有房主能改名單"); }
   };
 
-  const profileText = useMemo(() => profileToText(profile), [profile]);
   const cardText = useMemo(() => [profile.name, "", profile.intro,
     profile.portfolio ? `\n作品集：${profile.portfolio}` : "",
     profile.contact && profile.contact.trim() ? `\n${profile.contact.trim()}` : ""
@@ -529,7 +580,12 @@ function App(){
 
   const saveProfile = async (obj) => { setProfile(obj); await profileDoc().set(obj, { merge:true }); };
   const update = (id, patch) => col().doc(id).update(patch);
-  const remove = (id) => col().doc(id).delete();
+  // Firestore 不會連帶刪子集合，截圖要自己清掉，不然變成孤兒資料
+  const remove = async (id) => {
+    await col().doc(id).collection("media").doc("shot").delete().catch(() => {});
+    await col().doc(id).delete();
+    setShots(s => { const n = { ...s }; delete n[id]; return n; });
+  };
   const markSent = (g) => { update(g.id, { status:S.SENT, sentAt:today() }); setOpenId(null); flash(`「${g.title.slice(0,10)}」投出去了`); };
 
   const copy = async (text, msg) => {
@@ -564,87 +620,80 @@ function App(){
   };
 
   /* 收案子 */
-  const parseGigs = async () => {
-    if (!raw.trim()) return;
-    setBusy(true); setError("");
-    const prompt = `你是接案助理。使用者會貼上一段從社群（Threads、IG、FB 社團、LINE 群、外包平台）看到的接案資訊，可能一次有好幾個案子混在一起，也可能只有網址。請拆成結構化資料。
+  /* 手填新增一件案子 */
+  const setF = (patch) => setForm(f => ({ ...f, ...patch }));
+  const toggleVia = (v) =>
+    setForm(f => ({ ...f, vias: f.vias.includes(v) ? f.vias.filter(x => x !== v) : [...f.vias, v] }));
 
-今天是 ${today()}。
-
-接案者的背景（拿來判斷適合度）：
-${profileText}
-
-使用者貼上的內容：
-"""
-${raw}
-"""
-
-規則：
-- 一個案子一個物件。判斷不出任何案子就回傳 []。
-- 只有網址時可用網路搜尋補齊；查不到的欄位留空字串，不要編造預算或條件。
-- 全部用繁體中文、台灣用語。
-- 只輸出 JSON 陣列本身，前後不要有任何說明文字或 markdown 標記。
-
-每個物件的欄位：
-{"title":"案件名稱，20字內","client":"案主或品牌","source":"哪裡看到的","type":"細分類型，例如 短影音剪輯／課程長片／字幕／動態圖卡","cat":"片型，只能填 長片 或 短影片 或 混合 或 其他。3分鐘以內的直式短影音算短影片；課程、Podcast、訪談、紀錄等完整長度影片算長片；同時要交長片又要切短版的算混合；純圖卡、字幕、腳本等算其他","budget":"預算，照原文寫","term":"長期合作 或 短期／單次 或 沒註明","points":["條件重點，最多4條，每條20字內"],"link":"網址，原文有就一定要填","contact":"聯絡方式","deadline":"有寫截止或開工日就填 YYYY-MM-DD，沒有就空字串","fit":1到5的整數,"fitReason":"適不適合的理由，25字內","notes":"其他要注意的，沒有就空字串"}`;
-
+  const pickShot = async (file) => {
+    if (!file) return;
+    if (!/^image\//.test(file.type)) return flash("這不是圖片檔");
+    setBusy(true);
     try {
-      const text = await ask(prompt, true);
-      const s = text.indexOf("["), e = text.lastIndexOf("]");
-      if (s === -1 || e === -1) throw new Error("格式不對");
-      const arr = JSON.parse(text.slice(s, e+1));
-      if (!Array.isArray(arr) || !arr.length) { setError("這段看不出案子。多貼一點內容試試。"); setBusy(false); return; }
-      const now = Date.now();
-      const added = arr.map((g,i) => {
-        const o = {
-          id: `g${now}${i}`,
-          title: g.title || "未命名案件",
-          client: g.client||"", source: g.source||"", type: g.type||"未分類",
-          budget: g.budget||"",
-          term: TERMS.includes(g.term) ? g.term : "沒註明",
-          points: Array.isArray(g.points) ? g.points.slice(0,4) : [],
-          link: g.link||"", contact: g.contact||"",
-          deadline: /^\d{4}-\d{2}-\d{2}$/.test(g.deadline||"") ? g.deadline : "",
-          fit: Number(g.fit) >= 1 && Number(g.fit) <= 5 ? Number(g.fit) : 3,
-          fitReason: g.fitReason||"", notes: g.notes||"",
-          status: S.NEW, sentAt:"", pitch:"", seenAt: today(),
-        };
-        o.cat = CATS.includes(g.cat) ? g.cat : deriveCat(o);
-        return o;
-      });
-      await addMany(added);
-      setRaw(""); setTip(""); setShowDrop(false);
-      flash(`收進來 ${added.length} 件`);
-    } catch (err) {
-      setError(`整理失敗：${err.message}。再按一次試試。`);
+      const data = await shrinkImage(file);
+      setF({ shot: data, shotName: file.name });
+      flash(`截圖好了（${Math.round(data.length / 1024)} KB）`);
+    } catch (e) {
+      flash(e.message === "too-big" ? "圖片太大，壓不下來，先自己裁一下" : "讀不了這張圖");
     }
     setBusy(false);
   };
 
-  const writePitch = async (g) => {
-    setPitchBusy(g.id);
+  const addGig = async () => {
+    const title = form.title.trim();
+    const link = form.link.trim();
+    if (!title && !link) return setError("至少要有標題或網址，不然清單上看不出這是什麼案子。");
+    if (form.hasDeadline && !form.deadline) return setError("勾了投遞期限但沒填日期。不確定就選「無」。");
+
+    setBusy(true); setError("");
+    const id = `g${Date.now()}`;
+    const doc = {
+      title: title || link,
+      link,
+      cat: CATS.includes(form.cat) ? form.cat : "其他",
+      budget: form.budget.trim(),
+      seenAt: form.seenAt || today(),
+      source: SOURCES.includes(form.source) ? form.source : "",
+      vias: form.vias,
+      contact: form.contact.trim(),
+      deadline: form.hasDeadline ? form.deadline : "",
+      notes: form.notes.trim(),
+      hasShot: !!form.shot,
+      status: S.NEW,
+      sentAt: "",
+      pitch: "",
+    };
     try {
-      const text = await ask(`幫接案者寫一則要傳給案主的投遞訊息。
+      await col().doc(id).set(doc);
+      // 截圖另外存，清單同步時才不會每次都拖著圖片一起下載
+      if (form.shot) {
+        await col().doc(id).collection("media").doc("shot").set({ data: form.shot });
+        setShots(s => ({ ...s, [id]: form.shot }));
+      }
+      setForm(blankForm());
+      setShowDrop(false);
+      flash("收進來了");
+    } catch {
+      setError("存不進去。檢查網路，或確認你還在成員名單上。");
+    }
+    setBusy(false);
+  };
 
-接案者：
-${profileText}
+  /* 截圖：只有展開那一則才載 */
+  const loadShot = async (g) => {
+    if (!g.hasShot || shots[g.id] !== undefined) return;
+    setShots(s => ({ ...s, [g.id]: "loading" }));
+    try {
+      const d = await col().doc(g.id).collection("media").doc("shot").get();
+      setShots(s => ({ ...s, [g.id]: (d.exists && d.data().data) || "none" }));
+    } catch {
+      setShots(s => ({ ...s, [g.id]: "none" }));
+    }
+  };
 
-案件：
-名稱：${g.title}／案主：${g.client}／類型：${g.type}
-預算：${g.budget}／合作型態：${g.term}
-條件：${(g.points||[]).join("、")}
-備註：${g.notes}
-
-規則：
-- 繁體中文台灣用語，口語但專業，120到180字。
-- 開頭直接講看到哪則貼文、自己能怎麼接住這個需求，不要罐頭開場。
-- 中間提一個跟這個案子有關的具體做法或能力。
-- 結尾一定要附上作品集連結與可回覆的聯絡方式，照原文放不要改寫或省略。
-- 最後給一個明確的下一步。
-- 只輸出訊息本文。`);
-      await update(g.id, { pitch: text });
-    } catch (err) { flash(`沒寫出來：${err.message}`); }
-    setPitchBusy(null);
+  const writePitch = (g) => {
+    update(g.id, { pitch: draftPitch(g, profile) });
+    flash("套好模板了，記得自己潤一下");
   };
 
   /* 分區 */
@@ -654,42 +703,41 @@ ${profileText}
   const past = useMemo(() => gigs.filter(g => PAST.includes(g.status))
     .sort((a,b) => (b.sentAt||b.seenAt||"").localeCompare(a.sentAt||a.seenAt||"")), [gigs]);
 
-  const pickTop = async () => {
-    setTipBusy(true);
-    const brief = pending.map(g => `${g.title}｜${g.cat}｜${g.budget||"沒寫預算"}｜${g.term}｜${(g.points||[]).join("、")}`).join("\n");
-    try {
-      setTip(await ask(`這是一位剪輯師的背景：\n${profileText}\n\n還沒投的案子：\n${brief}\n\n從裡面挑最值得優先投的 2 到 3 件，用繁體中文台灣用語寫成一小段話（80字內），格式像：「先看這幾件：一、〇〇（理由）。二、〇〇（理由）。」理由要具體。只輸出這段話。`));
-    } catch (err) { flash(`挑不出來：${err.message}`); }
-    setTipBusy(false);
-  };
+  const GROUPS = ["片型", "在哪裡看到", "資訊日期"];
 
   const grouped = useMemo(() => {
-    const keyOf = g => groupBy==="合作型態" ? g.term : groupBy==="片型" ? (g.cat||"其他") : (g.seenAt||"");
+    const keyOf = g => groupBy==="片型" ? (g.cat||"其他")
+      : groupBy==="在哪裡看到" ? (g.source||"沒記來源")
+      : (g.seenAt||"");
     const map = new Map();
     pending.forEach(g => { const k = keyOf(g); if(!map.has(k)) map.set(k, []); map.get(k).push(g); });
     let keys = [...map.keys()];
-    if (groupBy==="合作型態") keys.sort((a,b)=>TERMS.indexOf(a)-TERMS.indexOf(b));
-    else if (groupBy==="片型") keys.sort((a,b)=>CATS.indexOf(a)-CATS.indexOf(b));
+    if (groupBy==="片型") keys.sort((a,b)=>CATS.indexOf(a)-CATS.indexOf(b));
+    else if (groupBy==="在哪裡看到") keys.sort((a,b)=>SOURCES.indexOf(a)-SOURCES.indexOf(b));
     else keys.sort().reverse();
-    keys.forEach(k => map.get(k).sort((a,b)=>b.fit-a.fit));
-    return keys.map(k => ({ key:k, label: groupBy==="收到日期" ? dateLabel(k) : k, items: map.get(k) }));
+    // 有期限的排前面，快到的更前面
+    keys.forEach(k => map.get(k).sort((a,b) => {
+      if (!!a.deadline !== !!b.deadline) return a.deadline ? -1 : 1;
+      if (a.deadline && b.deadline) return a.deadline.localeCompare(b.deadline);
+      return (b.seenAt||"").localeCompare(a.seenAt||"");
+    }));
+    return keys.map(k => ({ key:k, label: groupBy==="資訊日期" ? dateLabel(k) : k, items: map.get(k) }));
   }, [pending, groupBy]);
 
   const digestText = useMemo(() => {
     const L = [`留鼠看｜${md(today())} 整理　還沒投 ${pending.length} 件`];
-    if (tip) L.push("", tip);
     grouped.forEach(({label, items}) => {
       L.push("", `━━ ${label}（${items.length}件）━━`);
       items.forEach((g,i) => {
         L.push("", `${i+1}. ${g.title}`);
         if (g.cat && groupBy!=="片型") L.push(`　片型：${g.cat}`);
-        if (g.type) L.push(`　類型：${g.type}`);
         if (g.budget) L.push(`　預算：${g.budget}`);
-        if (g.term!=="沒註明" && groupBy!=="合作型態") L.push(`　合作：${g.term}`);
-        if (g.points && g.points.length) L.push(`　條件：${g.points.join("・")}`);
-        const from = [g.client, g.source].filter(Boolean).join("・");
-        if (from) L.push(`　來源：${from}`);
-        if (g.contact) L.push(`　聯絡：${g.contact}`);
+        if (g.deadline) L.push(`　投遞期限：${md(g.deadline)} 前`);
+        if (g.source && groupBy!=="在哪裡看到") L.push(`　在哪看到：${g.source}`);
+        if (g.vias && g.vias.length) L.push(`　怎麼聯絡：${g.vias.join("／")}`);
+        if (g.contact) L.push(`　聯絡資料：${g.contact}`);
+        if (g.notes) L.push(`　備註：${g.notes}`);
+        if (g.hasShot) L.push(`　（有截圖，開 app 看）`);
         if (g.link) L.push(`　${href(g.link)}`);
       });
     });
@@ -697,9 +745,9 @@ ${profileText}
       L.push("", "━━ 投出去等消息 ━━");
       live.forEach(g => L.push(`・${g.title}（${g.status}・${md(g.sentAt)} 投）`));
     }
-    L.push("", "— 有興趣的回我編號，我把細節找出來 —");
+    L.push("", "— 有興趣的回我編號，我把連結找出來 —");
     return L.join("\n");
-  }, [pending, grouped, tip, groupBy, live]);
+  }, [pending, grouped, groupBy, live]);
 
   if (user === undefined) return <div className="gate"><p className="muted">檢查登入狀態…</p></div>;
   if (user === null) return <SignIn err={authErr} busy={signingIn} onSignIn={signIn} />;
@@ -718,20 +766,23 @@ ${profileText}
             {g.link
               ? <a className="it-t link" href={href(g.link)} target="_blank" rel="noreferrer">{g.title}<span className="ext">↗</span></a>
               : <span className="it-t">{g.title}</span>}
-            <span className="bars" title={`適合度 ${g.fit}／5`}>
-              {[1,2,3,4,5].map(n => <i key={n} className={n<=g.fit?"f":""} />)}
-            </span>
+            {g.hasShot && <span className="shotdot" title="有截圖">🖼</span>}
           </div>
           <div className="kv">
             {g.budget && <span className="tag money">{g.budget}</span>}
             {groupBy!=="片型" && g.cat && <span className="tag cat">{g.cat}</span>}
-            {g.type && <span className="tag">{g.type}</span>}
-            {groupBy!=="合作型態" && g.term==="長期合作" && <span className="tag">長期</span>}
-            {g.deadline && <span className="tag">{md(g.deadline)} 前</span>}
+            {g.deadline && (() => {
+              const d = ago(g.deadline);
+              const soon = d !== null && d >= -3;   // 三天內或已過期
+              return <span className={`tag ${soon?"hot":""}`}>
+                {d > 0 ? `${md(g.deadline)} 已過` : `${md(g.deadline)} 前`}
+              </span>;
+            })()}
+            {g.vias && g.vias.map(v => <span key={v} className="tag via">{v}</span>)}
           </div>
-          {g.points && g.points.length>0 && <div className="cond">{g.points.join("・")}</div>}
+          {g.notes && <div className="cond">{g.notes}</div>}
           <div className="from">
-            {[g.client,g.source].filter(Boolean).join("・")}
+            {[g.source && `在 ${g.source} 看到`, g.seenAt && `${md(g.seenAt)} 記錄`].filter(Boolean).join("・")}
             {g.contact ? `　聯絡：${g.contact}` : ""}
           </div>
           <div className="acts">
@@ -740,7 +791,9 @@ ${profileText}
               ? <button className="lnk" onClick={()=>update(g.id,{status:S.WANT})}>標成想投</button>
               : <button className="lnk" onClick={()=>update(g.id,{status:S.NEW})}>取消想投</button>}
             {g.link && <a className="lnk" href={href(g.link)} target="_blank" rel="noreferrer">看原貼文 ↗</a>}
-            <button className="lnk" onClick={()=>setOpenId(open?null:g.id)}>{open?"收起":"投遞訊息與備註"}</button>
+            <button className="lnk" onClick={()=>{ const nx = open?null:g.id; setOpenId(nx); if (nx) loadShot(g); }}>
+              {open ? "收起" : g.hasShot ? "看截圖與細節" : "投遞訊息與備註"}
+            </button>
             <button className="lnk dim" onClick={()=>update(g.id,{status:S.SKIP})}>跳過</button>
           </div>
         </div>
@@ -748,9 +801,19 @@ ${profileText}
         {open && (
           <div className="panel">
             <div>
-              <span className="lbl">適合度理由</span>
-              <p>{g.fitReason || "沒有判斷理由"}</p>
-              <span className="lbl">片型（分錯可以改）</span>
+              {g.hasShot && (
+                <>
+                  <span className="lbl">截圖</span>
+                  {shots[g.id] === "loading" && <p className="muted sm">載入中…</p>}
+                  {shots[g.id] === "none" && <p className="muted sm">截圖讀不到了</p>}
+                  {shots[g.id] && shots[g.id] !== "loading" && shots[g.id] !== "none" && (
+                    <a href={shots[g.id]} target="_blank" rel="noreferrer" title="點開看原尺寸">
+                      <img className="shot" src={shots[g.id]} alt="案子截圖" />
+                    </a>
+                  )}
+                </>
+              )}
+              <span className="lbl">片型（填錯可以改）</span>
               <div className="catpick">
                 {CATS.map(c => <button key={c} className={`chip ${g.cat===c?"on":""}`} onClick={()=>update(g.id,{cat:c})}>{c}</button>)}
               </div>
@@ -762,12 +825,12 @@ ${profileText}
             <div>
               <div className="pitch-head">
                 <span className="lbl">投遞訊息</span>
-                <button className="chip" onClick={()=>writePitch(g)} disabled={pitchBusy===g.id}>
-                  {pitchBusy===g.id ? "寫中…" : g.pitch ? "重寫一版" : "幫鼠寫一封"}
+                <button className="chip" onClick={()=>writePitch(g)}>
+                  {g.pitch ? "重新套模板" : "套用模板"}
                 </button>
               </div>
               <textarea className="paper-ta pitch" value={g.pitch||""}
-                placeholder="按上面那顆，會照鼠的名片寫一封可以直接傳的訊息。也可以自己改。"
+                placeholder="按上面那顆，會照鼠的名片和這個案子的資訊組一封草稿。一定要自己讀過再改。"
                 onChange={e=>setGigs(p=>p.map(x=>x.id===g.id?{...x,pitch:e.target.value}:x))}
                 onBlur={e=>update(g.id,{pitch:e.target.value})} />
               <div className="pfoot">
@@ -802,12 +865,112 @@ ${profileText}
       </header>
 
       {showDrop && (
-        <section className="drop">
-          <textarea value={raw} onChange={e=>setRaw(e.target.value)} rows={4} autoFocus
-            placeholder={"把社群上看到的整段貼過來，一次貼好幾則也可以。\nThreads 貼文、FB 社團徵人、IG 限動文字、單一網址都吃。"} />
+        <section className="drop form">
+          <label className="fld">
+            <span className="lbl">網址</span>
+            <input value={form.link} onChange={e=>setF({link:e.target.value})} autoFocus
+              placeholder="貼上原貼文的連結，鼠會點進去看細節" inputMode="url" />
+          </label>
+
+          <label className="fld">
+            <span className="lbl">標題（清單上顯示的名字）</span>
+            <input value={form.title} onChange={e=>setF({title:e.target.value})}
+              placeholder="例如：某某品牌徵短影音剪輯" />
+          </label>
+
+          <div className="fld">
+            <span className="lbl">片型</span>
+            <div className="catpick">
+              {CATS.map(c => (
+                <button key={c} type="button" className={`chip ${form.cat===c?"on":""}`}
+                  onClick={()=>setF({cat: form.cat===c ? "" : c})}>{c}</button>
+              ))}
+            </div>
+          </div>
+
+          <div className="row2">
+            <label className="fld">
+              <span className="lbl">預算</span>
+              <input value={form.budget} onChange={e=>setF({budget:e.target.value})}
+                placeholder="照原文寫，例如 一支 1500／面議" />
+            </label>
+            <label className="fld">
+              <span className="lbl">資訊日期</span>
+              <input type="date" value={form.seenAt} onChange={e=>setF({seenAt:e.target.value})} />
+            </label>
+          </div>
+
+          <div className="fld">
+            <span className="lbl">在哪裡看到</span>
+            <div className="catpick">
+              {SOURCES.map(s => (
+                <button key={s} type="button" className={`chip ${form.source===s?"on":""}`}
+                  onClick={()=>setF({source: form.source===s ? "" : s})}>{s}</button>
+              ))}
+            </div>
+          </div>
+
+          <div className="fld">
+            <span className="lbl">怎麼聯絡（可多選）</span>
+            <div className="catpick">
+              {VIAS.map(v => (
+                <button key={v} type="button" className={`chip ${form.vias.includes(v)?"on":""}`}
+                  onClick={()=>toggleVia(v)}>{v}</button>
+              ))}
+            </div>
+          </div>
+
+          <label className="fld">
+            <span className="lbl">聯絡資料（選填）</span>
+            <input value={form.contact} onChange={e=>setF({contact:e.target.value})}
+              placeholder="對方的信箱／LINE ID，沒有就留空" />
+          </label>
+
+          <div className="fld">
+            <span className="lbl">投遞期限</span>
+            <div className="catpick">
+              <button type="button" className={`chip ${!form.hasDeadline?"on":""}`}
+                onClick={()=>setF({hasDeadline:false, deadline:""})}>無</button>
+              <button type="button" className={`chip ${form.hasDeadline?"on":""}`}
+                onClick={()=>setF({hasDeadline:true})}>有期限</button>
+              {form.hasDeadline && (
+                <input type="date" className="inline-date" value={form.deadline}
+                  onChange={e=>setF({deadline:e.target.value})} />
+              )}
+            </div>
+          </div>
+
+          <label className="fld">
+            <span className="lbl">備註（選填）</span>
+            <textarea rows={2} value={form.notes} onChange={e=>setF({notes:e.target.value})}
+              placeholder="需要注意的條件、對方的要求…" />
+          </label>
+
+          <div className="fld">
+            <span className="lbl">截圖（選填）</span>
+            {form.shot ? (
+              <div className="shotpick">
+                <img className="shot sm" src={form.shot} alt="預覽" />
+                <div>
+                  <p className="sm muted">{form.shotName}（{Math.round(form.shot.length/1024)} KB）</p>
+                  <button type="button" className="lnk dim" onClick={()=>setF({shot:"", shotName:""})}>移除</button>
+                </div>
+              </div>
+            ) : (
+              <>
+                <button type="button" className="chip" onClick={()=>shotRef.current.click()} disabled={busy}>
+                  {busy ? "處理中…" : "選一張截圖"}
+                </button>
+                <span className="hint">會自動縮到 1400px 以內，鼠可以先看截圖再決定要不要點進網址。</span>
+              </>
+            )}
+            <input ref={shotRef} type="file" accept="image/*" style={{display:"none"}}
+              onChange={e=>{ const f=e.target.files[0]; if(f) pickShot(f); e.target.value=""; }} />
+          </div>
+
           <div className="drop-foot">
-            <span className="sm muted">只有網址時會上網查一下，會多等幾秒。</span>
-            <button className="solid" onClick={parseGigs} disabled={busy||!raw.trim()}>{busy?"整理中…":"收進來"}</button>
+            <button className="ghost" onClick={()=>{ setForm(blankForm()); setError(""); }}>清空</button>
+            <button className="solid" onClick={addGig} disabled={busy}>{busy?"存進去…":"收進來"}</button>
           </div>
           {error && <p className="err">{error}</p>}
         </section>
@@ -831,14 +994,13 @@ ${profileText}
         <>
           <div className="sheet-bar">
             <div className="seg">
-              {["合作型態","片型","收到日期"].map(k => (
+              {GROUPS.map(k => (
                 <button key={k} className={groupBy===k?"on":""} onClick={()=>setGroupBy(k)}>照{k}分</button>
               ))}
             </div>
             <div className="sheet-acts">
               <button className="mini" onClick={()=>fileRef.current.click()}>匯入</button>
               <button className="mini" onClick={exportJSON} disabled={!gigs.length}>備份</button>
-              <button className="mini" onClick={pickTop} disabled={tipBusy||!pending.length}>{tipBusy?"挑選中…":"挑幾件先投"}</button>
               <button className="solid sm2" onClick={()=>copy(digestText,"整篇複製好了，貼給鼠")}>複製整篇</button>
             </div>
           </div>
@@ -851,7 +1013,6 @@ ${profileText}
               <span>{md(today())} 整理　還沒投 {pending.length} 件</span>
             </div>
 
-            {tip && <p className="tip">{tip}</p>}
             {!gigs.length && <p className="muted pad">還沒有案子。按右上角「＋ 貼新案子」，或按「匯入」把備份檔讀進來。</p>}
             {gigs.length>0 && !pending.length && <p className="muted pad">還沒投的都處理完了。</p>}
 
