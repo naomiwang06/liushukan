@@ -1,0 +1,1042 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>留鼠看，養活自己</title>
+<meta name="theme-color" content="#16161A" />
+<link rel="manifest" href="./manifest.json" />
+<link rel="apple-touch-icon" href="./icon-180.png" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<style>
+:root{
+  --bg:#16161A; --panel:#1E1E25; --panel2:#24242C; --line:#2F2F3A;
+  --ink:#E9E7E3; --dim:#8B8894; --mango:#F2B441; --hot:#E2665A;
+  --paper:#F5F0E4; --pink:#22201C; --rule:#CFC7B4; --faint:#8A8375;
+}
+*{box-sizing:border-box;}
+html,body{margin:0; background:var(--bg);}
+body{
+  color:var(--ink); font-family:"PingFang TC","Noto Sans TC","Microsoft JhengHei",system-ui,sans-serif;
+  line-height:1.6; font-size:14px; -webkit-text-size-adjust:100%;
+}
+#root{padding:22px 18px calc(60px + env(safe-area-inset-bottom)); max-width:900px; margin:0 auto;}
+.sm{font-size:12px;} .muted{color:var(--dim);} .pad{padding:20px 0;}
+
+.hd{display:flex; justify-content:space-between; align-items:flex-start; gap:12px; flex-wrap:wrap;}
+h1{margin:0; font-size:26px; font-weight:800; letter-spacing:-.02em;}
+.sub{margin:4px 0 0; color:var(--dim); font-size:13px;}
+.hd-btns{display:flex; gap:8px; flex-wrap:wrap;}
+
+button{font-family:inherit; cursor:pointer; border-radius:7px; transition:.15s; font-size:13px;}
+button:disabled{opacity:.4; cursor:default;}
+.ghost{background:transparent; border:1px solid var(--line); color:var(--ink); padding:7px 12px;}
+.ghost:hover:not(:disabled){border-color:var(--mango); color:var(--mango);}
+.solid{background:var(--mango); border:none; color:#1A1206; font-weight:700; padding:8px 16px;}
+.solid.sm2{padding:6px 14px; font-size:12.5px;}
+.solid:hover:not(:disabled){filter:brightness(1.08);}
+.mini{background:var(--panel2); border:1px solid var(--line); color:var(--ink); padding:5px 10px; font-size:12px;}
+.mini:hover:not(:disabled){border-color:var(--mango);}
+button:focus-visible,textarea:focus,input:focus,a:focus-visible{outline:2px solid var(--mango); outline-offset:2px;}
+
+.drop{margin-top:16px; background:var(--panel); border:1px solid var(--line); border-radius:10px; padding:12px;}
+.drop textarea,.modal textarea,.fld input,.fld textarea{
+  width:100%; background:var(--panel2); border:1px solid var(--line); border-radius:7px;
+  color:var(--ink); padding:10px 12px; font-family:inherit; font-size:13px; line-height:1.7; resize:vertical;}
+.drop textarea::placeholder,.modal textarea::placeholder,.fld input::placeholder,.fld textarea::placeholder{color:#61606B;}
+.drop-foot{display:flex; justify-content:space-between; align-items:center; gap:10px; margin-top:10px; flex-wrap:wrap;}
+.err{color:var(--hot); font-size:12px; margin:8px 0 0;}
+
+.tally{display:flex; gap:16px; flex-wrap:wrap; margin:14px 0 16px; font-size:12px; color:var(--dim);}
+.tally-i{display:flex; align-items:center; gap:6px;}
+.tally-i i{width:7px; height:7px; border-radius:2px; display:block;}
+.sync{margin-left:auto; font-size:11px;}
+.sync b{color:#4FB286; font-weight:400;}
+
+.sheet-bar{display:flex; gap:12px; align-items:center; flex-wrap:wrap; margin-bottom:12px;}
+.seg{display:flex; border:1px solid var(--line); border-radius:7px; overflow:hidden;}
+.seg button{background:transparent; border:none; border-radius:0; color:var(--dim); padding:6px 12px; font-size:12px;}
+.seg button.on{background:var(--panel2); color:var(--ink);}
+.sheet-acts{display:flex; gap:8px; margin-left:auto;}
+
+.sheet{background:var(--paper); color:var(--pink); border-radius:4px; padding:26px 24px 22px;
+  box-shadow:0 14px 40px rgba(0,0,0,.5); max-width:680px;}
+.sheet .lbl{display:block; font-family:ui-monospace,"SF Mono",Menlo,monospace; font-size:10px;
+  letter-spacing:.16em; color:var(--faint); margin-top:12px;}
+.sheet-head{display:flex; justify-content:space-between; align-items:baseline;
+  border-bottom:2px solid var(--pink); padding-bottom:8px;}
+.sheet-head h2{margin:0; font-size:19px; letter-spacing:.06em;}
+.sheet-head span{font-family:ui-monospace,Menlo,monospace; font-size:11px; color:#6B6558;}
+.tip{background:#EAE2CE; border-left:3px solid var(--mango); margin:14px 0 0; padding:9px 12px; font-size:13px;}
+.grp{margin-top:22px;}
+.grp h3{margin:0 0 4px; font-size:13px; letter-spacing:.1em; border-bottom:1px solid var(--rule);
+  padding-bottom:5px; display:flex; justify-content:space-between; align-items:baseline;}
+.grp h3 em{font-style:normal; font-family:ui-monospace,Menlo,monospace; font-size:10.5px; color:var(--faint);}
+.grp h3.clickable{cursor:pointer;}
+.grp.live{margin-top:26px; border-top:2px solid var(--pink); padding-top:14px;}
+.grp.archive{margin-top:20px; opacity:.85;}
+
+.item{display:grid; grid-template-columns:18px 1fr auto; gap:10px; padding:11px 0; border-bottom:1px dotted var(--rule);}
+.item:last-child{border-bottom:none;}
+.item.open{background:#EFE9DA; margin:0 -10px; padding:11px 10px; border-radius:4px;}
+.no{font-family:ui-monospace,Menlo,monospace; font-size:12px; color:var(--faint); padding-top:3px;}
+.body{min-width:0;}
+.it-top{display:flex; gap:10px; align-items:baseline; justify-content:space-between;}
+.it-t{font-weight:700; font-size:14.5px; color:var(--pink); text-decoration:none;}
+a.link{border-bottom:1.5px solid #C2A25C; text-decoration:none;}
+a.link:hover{color:#8A6410; border-bottom-color:#8A6410;}
+.ext{font-size:11px; color:#9A6A12; margin-left:3px;}
+.bars{display:flex; gap:2px; flex:none; padding-top:3px;}
+.bars i{width:4px; height:11px; border-radius:1px; background:var(--rule); display:block;}
+.bars i.f{background:var(--pink);}
+.kv{display:flex; gap:6px; flex-wrap:wrap; margin-top:6px;}
+.tag{font-size:11.5px; border:1px solid #C6BEAA; border-radius:3px; padding:1px 7px; color:#5C5648;}
+.tag.money{background:var(--pink); color:var(--paper); border-color:var(--pink); font-weight:700; font-family:ui-monospace,Menlo,monospace;}
+.tag.cat{background:#DED5BF; border-color:#DED5BF; color:#3B372E; font-weight:700;}
+.cond{font-size:12.5px; color:#4A463C; margin-top:5px;}
+.from{font-size:11.5px; color:var(--faint); margin-top:4px;}
+.acts{display:flex; gap:12px; align-items:center; margin-top:8px; flex-wrap:wrap;}
+.go{background:var(--pink); border:none; color:var(--paper); font-weight:700; padding:4px 12px; font-size:12px; border-radius:5px;}
+.go:hover{background:#3E7CB1;}
+.lnk{background:none; border:none; padding:0; font-size:11.5px; color:#8A6410;
+  text-decoration:underline; text-underline-offset:2px; cursor:pointer; font-family:inherit;}
+.lnk:hover{color:#5E4409;}
+.lnk.dim{color:var(--faint);}
+.want{font-size:10px; letter-spacing:.1em; background:#C9902A; color:var(--paper);
+  border-radius:3px; padding:2px 6px; height:fit-content; font-weight:700;}
+
+.panel{grid-column:1 / -1; display:grid; grid-template-columns:1fr 1fr; gap:18px;
+  margin-top:10px; padding-top:12px; border-top:1px solid var(--rule);}
+.panel p{margin:4px 0 0; font-size:12.5px;}
+.paper-ta{width:100%; background:#FBF8F0; border:1px solid var(--rule); border-radius:5px;
+  color:var(--pink); padding:8px 10px; font-family:inherit; font-size:12.5px; line-height:1.7; resize:vertical; margin-top:5px;}
+.paper-ta::placeholder{color:#A9A292;}
+.note{min-height:56px;} .pitch{min-height:180px;}
+.catpick{display:flex; gap:5px; flex-wrap:wrap; margin-top:6px;}
+.chip{background:#FBF8F0; border:1px solid var(--rule); color:#4A463C; padding:4px 10px; font-size:11.5px;}
+.chip:hover:not(:disabled){border-color:var(--pink);}
+.chip.on{background:var(--pink); border-color:var(--pink); color:var(--paper); font-weight:700;}
+.chip.deal:hover{border-color:#3B8C68; color:#3B8C68;}
+.chip.del{margin-left:auto; color:var(--faint);}
+.chip.del:hover{border-color:#B3543F; color:#B3543F;}
+.pitch-head{display:flex; justify-content:space-between; align-items:center;}
+.pfoot{display:flex; gap:6px; margin-top:8px; flex-wrap:wrap;}
+
+.lrow{display:flex; justify-content:space-between; align-items:center; gap:12px;
+  padding:9px 0; border-bottom:1px dotted var(--rule); flex-wrap:wrap;}
+.lrow:last-child{border-bottom:none;}
+.lmain{display:flex; align-items:baseline; gap:8px; flex-wrap:wrap; min-width:0;}
+.pin{width:7px; height:7px; border-radius:2px; flex:none; align-self:center;}
+.lt{font-weight:700; font-size:13.5px; color:var(--pink); text-decoration:none;}
+.lmeta{font-size:11.5px; color:var(--faint); font-family:ui-monospace,Menlo,monospace;}
+.cold{color:#B3543F; font-weight:400;}
+.lacts{display:flex; gap:6px; flex-wrap:wrap;}
+
+.arow{display:flex; align-items:baseline; gap:10px; padding:6px 0; font-size:12px;
+  border-bottom:1px dotted var(--rule); flex-wrap:wrap;}
+.arow:last-child{border-bottom:none;}
+.adate{font-family:ui-monospace,Menlo,monospace; font-size:11px; color:var(--faint); width:38px; flex:none;}
+.at{color:#4A463C; flex:1; min-width:120px;}
+.abudget{font-family:ui-monospace,Menlo,monospace; font-size:11px; color:var(--faint);}
+.atag{font-size:10.5px; border:1px solid; border-radius:3px; padding:0 6px;}
+.foot{text-align:center; font-size:11.5px; color:var(--faint); margin:24px 0 0;}
+
+.empty{border:1px dashed var(--line); border-radius:10px; padding:34px 20px; text-align:center; margin-top:14px;}
+.empty p{margin:0 0 6px;}
+
+.mask{position:fixed; inset:0; background:rgba(8,8,10,.72); display:flex; align-items:center;
+  justify-content:center; padding:20px; z-index:50;}
+.modal{background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:20px;
+  width:100%; max-width:520px; max-height:88vh; overflow:auto;}
+.modal h2{margin:0; font-size:18px;}
+.modal p{margin:4px 0 12px;}
+.modal-top{display:flex; justify-content:space-between; align-items:center; gap:10px;}
+.modal-foot{display:flex; justify-content:space-between; align-items:center; gap:8px; margin-top:16px;}
+.foot-r{display:flex; gap:8px;}
+.warn{color:var(--hot); font-size:18px; line-height:0; margin-left:5px; vertical-align:middle;}
+
+.card{background:var(--paper); color:var(--pink); border-radius:5px; padding:16px 18px; margin-top:4px;}
+.card .lbl{display:block; font-family:ui-monospace,"SF Mono",Menlo,monospace; font-size:10px;
+  letter-spacing:.16em; color:var(--faint); margin-bottom:3px;}
+.card-name{font-size:16px; font-weight:800; border-bottom:2px solid var(--pink); padding-bottom:8px;}
+.card-intro,.card-contact{font-family:inherit; font-size:12.5px; line-height:1.75;
+  white-space:pre-wrap; margin:10px 0 0; color:#3B372E;}
+.card-line{margin-top:12px; border-top:1px dotted var(--rule); padding-top:10px; font-size:12.5px;}
+.card-line a{color:#8A6410; word-break:break-all;}
+.card .hint{font-size:11.5px; color:#B3543F;}
+
+.fld{display:block; margin-top:14px;}
+.fld .lbl{display:block; font-family:ui-monospace,"SF Mono",Menlo,monospace; font-size:10px;
+  letter-spacing:.16em; color:var(--dim); margin-bottom:5px;}
+.fld .hint{display:block; font-size:11.5px; color:var(--dim); margin-top:5px;}
+
+.gate{max-width:380px; margin:14vh auto 0; text-align:center;}
+.gate h1{font-size:24px;}
+.gate p{color:var(--dim); font-size:13px; margin:8px 0 20px;}
+.gate input{width:100%; text-align:center; letter-spacing:.3em; font-size:18px; padding:12px;
+  background:var(--panel2); border:1px solid var(--line); border-radius:8px; color:var(--ink); font-family:inherit;}
+.gate button{width:100%; margin-top:10px; padding:12px;}
+.gate .sm{font-size:12px; margin:-8px 0 18px;}
+
+.cnt{display:inline-block; margin-left:5px; padding:0 5px; border-radius:8px; font-style:normal;
+  font-size:10px; background:var(--panel2); color:var(--dim);}
+.who{margin-left:10px; color:var(--faint);}
+.mem{display:flex; align-items:center; gap:8px; padding:9px 0; border-bottom:1px solid var(--line);}
+.mem:last-child{border-bottom:none;}
+.mem-e{flex:1; font-size:13px; word-break:break-all;}
+.mem-tag{font-size:10px; padding:1px 6px; border-radius:8px; border:1px solid var(--line); color:var(--dim);}
+.mem-add{display:flex; gap:8px; margin-top:14px;}
+.mem-add input{flex:1; padding:9px 10px; background:var(--panel2); border:1px solid var(--line);
+  border-radius:8px; color:var(--ink); font-family:inherit; font-size:13px;}
+
+.toast{position:fixed; bottom:22px; left:50%; transform:translateX(-50%); background:var(--ink);
+  color:#16161A; font-weight:700; font-size:13px; padding:9px 18px; border-radius:20px; z-index:60;}
+
+@media (max-width:720px){
+  #root{padding:16px 12px 50px;}
+  .sheet{padding:20px 14px;}
+  .item{grid-template-columns:16px 1fr;}
+  .want{grid-column:2;}
+  .panel{grid-template-columns:1fr; gap:0;}
+  .sheet-acts{margin-left:0; width:100%;}
+  .lacts{width:100%;}
+}
+@media (prefers-reduced-motion:reduce){ *{transition:none !important;} }
+</style>
+</head>
+<body>
+<div id="root"></div>
+
+<!-- ============ 這裡是你要填的三件事 ============ -->
+<script>
+window.CONFIG = {
+  // 1. Firebase 主控台 → 專案設定 → 你的應用程式 → 設定
+  //    這幾個值本來就會出現在前端，不是機密
+  firebase: {
+    apiKey: "AIzaSyAp0uNcLbnEs_akNl5SdEynOit_1ioJliU",
+    authDomain: "to-safe-tobashi.firebaseapp.com",
+    projectId: "to-safe-tobashi",
+    storageBucket: "to-safe-tobashi.firebasestorage.app",
+    messagingSenderId: "608659086547",
+    appId: "1:608659086547:web:a64830996ae2dc86cd8826",
+  },
+  // 2. Worker 部署完的網址
+  workerUrl: "https://liushukan-api.你的帳號.workers.dev",
+  // 3. 跟 Worker 的 APP_KEY 一模一樣的那串亂碼
+  //    這串會出現在公開的前端，本來就不是機密，只是防路人亂打你的 API
+  appKey: "lsk-c8z3su8n5xke8eubv82twz39qfsbvaig",
+};
+</script>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+<script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+<script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+<script src="https://unpkg.com/@babel/standalone@7/babel.min.js"></script>
+
+<script type="text/babel" data-presets="react">
+const { useState, useEffect, useMemo, useRef } = React;
+
+/* ---------- 狀態模型 ---------- */
+const S = { NEW:"沒看過", WANT:"想投", SENT:"已投遞", ASK:"詢問中", NONE:"無回應", DEAL:"成交", SKIP:"跳過" };
+const PENDING = [S.NEW, S.WANT];
+const LIVE = [S.SENT, S.ASK];
+const PAST = [S.NONE, S.DEAL, S.SKIP];
+const COLOR = { [S.NEW]:"#8B8894", [S.WANT]:"#C9902A", [S.SENT]:"#3E7CB1",
+  [S.ASK]:"#7A5EA8", [S.NONE]:"#A5A090", [S.DEAL]:"#3B8C68", [S.SKIP]:"#A5A090" };
+
+const TERMS = ["長期合作", "短期／單次", "沒註明"];
+const CATS = ["長片", "短影片", "混合", "其他"];
+const LONG_SIG = ["長片","課程","podcast","紀錄","訪談","講座","節目","全片","完整版","說明會","教學影片","直播存檔"];
+const SHORT_SIG = ["短影音","短片","reels","shorts","tiktok","限動","直式","精華","短版","切短","快剪","預告"];
+
+function deriveCat(g){
+  const t = `${g.title||""} ${g.type||""} ${(g.points||[]).join(" ")}`.toLowerCase();
+  const long = LONG_SIG.some(k=>t.includes(k)), short = SHORT_SIG.some(k=>t.includes(k));
+  if (long && short) return "混合";
+  if (long) return "長片";
+  if (short) return "短影片";
+  return "其他";
+}
+
+const DEFAULT_PROFILE = {
+  name: "鼠｜影片剪輯師",
+  intro: "能做：短影音剪輯、字幕、節奏配樂、簡單動態圖卡、Podcast 影音化\n軟體：Premiere Pro、After Effects、CapCut\n接案偏好：可遠端、想找長期配合的\n報價：單支短影音 NT$1,200 起，長片另議",
+  portfolio: "",
+  contact: "Email：\nIG：\nLINE ID：",
+};
+const profileToText = (p) => [p.name, p.intro,
+  p.portfolio ? `作品集：${p.portfolio}` : "",
+  p.contact && p.contact.trim() ? `可回覆的聯絡方式：\n${p.contact.trim()}` : ""
+].filter(Boolean).join("\n");
+
+const today = () => new Date().toISOString().slice(0,10);
+const md = (d) => d ? `${Number(d.slice(5,7))}/${Number(d.slice(8,10))}` : "";
+const href = (u) => /^https?:\/\//i.test(u) ? u : `https://${u}`;
+const ago = (d) => d ? Math.round((new Date(today()+"T00:00:00") - new Date(d+"T00:00:00"))/86400000) : null;
+const WK = ["日","一","二","三","四","五","六"];
+function dateLabel(d){
+  if (!d) return "沒記日期";
+  const gap = ago(d);
+  if (gap === 0) return `${md(d)}（今天）`;
+  if (gap === 1) return `${md(d)}（昨天）`;
+  return `${md(d)}（${WK[new Date(d+"T00:00:00").getDay()]}）`;
+}
+
+/* ---------- Firebase ---------- */
+firebase.initializeApp(window.CONFIG.firebase);
+const db = firebase.firestore();
+const auth = firebase.auth();
+
+const provider = new firebase.auth.GoogleAuthProvider();
+provider.setCustomParameters({ prompt: "select_account" });
+
+/* 加到主畫面的模式下彈窗常被系統擋掉，那邊直接走轉址 */
+const standalone = window.navigator.standalone === true
+  || window.matchMedia("(display-mode: standalone)").matches;
+
+const POPUP_FAIL = [
+  "auth/popup-blocked",
+  "auth/popup-closed-by-user",
+  "auth/cancelled-popup-request",
+  "auth/operation-not-supported-in-this-environment",
+];
+
+async function doSignIn(){
+  if (standalone) return auth.signInWithRedirect(provider);
+  try {
+    await auth.signInWithPopup(provider);
+  } catch (e) {
+    if (POPUP_FAIL.includes(e.code)) return auth.signInWithRedirect(provider);
+    throw e;
+  }
+}
+
+function authMsg(e){
+  const c = (e && e.code) || "";
+  if (c === "auth/operation-not-allowed") return "Firebase 後台還沒開啟 Google 登入";
+  if (c === "auth/unauthorized-domain")   return "這個網域還沒加進 Firebase 的授權網域清單";
+  if (c === "auth/network-request-failed") return "連不上網路，等一下再試";
+  return "登入沒成功，再試一次";
+}
+
+const emailOf = (u) => ((u && u.email) || "").trim().toLowerCase();
+
+/* ---------- Claude（走自己的 Worker） ---------- */
+async function ask(prompt, search){
+  const r = await fetch(window.CONFIG.workerUrl, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "x-app-key": window.CONFIG.appKey },
+    body: JSON.stringify({ prompt, search: !!search }),
+  });
+  const d = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(d.error || `錯誤 ${r.status}`);
+  return d.text || "";
+}
+
+/* ---------- 登入 ---------- */
+function SignIn({ err, onSignIn, busy }){
+  return (
+    <div className="gate">
+      <h1>留鼠看，養活自己</h1>
+      <p>先用 Google 登入。之後你開的房間，只有你邀請的人進得來。</p>
+      <button className="solid" onClick={onSignIn} disabled={busy}>
+        {busy ? "登入中…" : "用 Google 登入"}
+      </button>
+      {err && <p className="err">{err}</p>}
+    </div>
+  );
+}
+
+/* ---------- 房間進不去 ---------- */
+function Denied({ room, email, onChangeRoom, onSignOut }){
+  return (
+    <div className="gate">
+      <h1>這間房不是你的</h1>
+      <p>
+        房號 <b>{room}</b> 已經有人在用，而 <b>{email}</b> 不在成員名單上。
+      </p>
+      <p className="sm muted">
+        如果這是朋友的房間，請房主在「房間成員」裡把你的信箱加進去。
+        想自己開一間的話，換一個沒人用過的房號就行。
+      </p>
+      <button className="solid" onClick={onChangeRoom}>換一個房號</button>
+      <button className="lnk dim" onClick={onSignOut}>換帳號登入</button>
+    </div>
+  );
+}
+
+/* ---------- 房號 ---------- */
+function Gate({ onEnter }){
+  const [v, setV] = useState("");
+  const go = () => { const c = v.trim().toLowerCase(); if (c) onEnter(c); };
+  return (
+    <div className="gate">
+      <h1>留鼠看，養活自己</h1>
+      <p>輸入房號就會看到同一份清單。第一次用的話，自己取一個記得住的。</p>
+      <input value={v} onChange={e=>setV(e.target.value)} onKeyDown={e=>e.key==="Enter"&&go()}
+        placeholder="房號" autoCapitalize="none" />
+      <button className="solid" onClick={go} disabled={!v.trim()}>進去</button>
+    </div>
+  );
+}
+
+/* ---------- 主體 ---------- */
+function App(){
+  const [room, setRoom] = useState(() => localStorage.getItem("lsk:room") || "");
+  const [user, setUser] = useState(undefined);      // undefined=還在判斷, null=沒登入
+  const [authErr, setAuthErr] = useState("");
+  const [signingIn, setSigningIn] = useState(false);
+  const [roomState, setRoomState] = useState("idle"); // idle|checking|ok|denied
+  const [roomMeta, setRoomMeta] = useState(null);
+  const [showMembers, setShowMembers] = useState(false);
+  const [newMember, setNewMember] = useState("");
+  const [ready, setReady] = useState(false);
+  const [gigs, setGigs] = useState([]);
+  const [profile, setProfile] = useState(DEFAULT_PROFILE);
+  const [raw, setRaw] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const [groupBy, setGroupBy] = useState("合作型態");
+  const [openId, setOpenId] = useState(null);
+  const [showPast, setShowPast] = useState(false);
+  const [showCard, setShowCard] = useState(false);
+  const [editCard, setEditCard] = useState(false);
+  const [draft, setDraft] = useState(DEFAULT_PROFILE);
+  const [showDrop, setShowDrop] = useState(false);
+  const [toast, setToast] = useState("");
+  const [pitchBusy, setPitchBusy] = useState(null);
+  const [tip, setTip] = useState("");
+  const [tipBusy, setTipBusy] = useState(false);
+  const fileRef = useRef(null);
+
+  const flash = (m) => { setToast(m); setTimeout(()=>setToast(""), 2400); };
+
+  const roomDoc = () => db.collection("rooms").doc(room);
+  const col = () => roomDoc().collection("gigs");
+  const profileDoc = () => roomDoc().collection("meta").doc("profile");
+
+  const myEmail = emailOf(user);
+  const isOwner = !!(roomMeta && user && roomMeta.owner === user.uid);
+  const members = (roomMeta && roomMeta.memberEmails) || [];
+
+  /* 登入狀態 */
+  useEffect(() => {
+    auth.getRedirectResult().catch(e => setAuthErr(authMsg(e)));
+    return auth.onAuthStateChanged(u => { setUser(u || null); setSigningIn(false); });
+  }, []);
+
+  const signIn = async () => {
+    setAuthErr(""); setSigningIn(true);
+    try { await doSignIn(); }
+    catch (e) { setAuthErr(authMsg(e)); setSigningIn(false); }
+  };
+
+  const signOut = async () => {
+    await auth.signOut();
+    setRoomState("idle"); setRoomMeta(null); setGigs([]); setReady(false);
+  };
+
+  const changeRoom = () => {
+    localStorage.removeItem("lsk:room");
+    setRoom(""); setRoomState("idle"); setRoomMeta(null); setGigs([]); setReady(false);
+  };
+
+  /* 進房間：先讀，讀不到就試著認領空房 */
+  useEffect(() => {
+    if (!user || !room) { setRoomState("idle"); return; }
+    let alive = true;
+    setRoomState("checking"); setReady(false);
+
+    (async () => {
+      const ref = roomDoc();
+      const claim = { owner: user.uid, memberEmails: [myEmail], createdAt: new Date().toISOString() };
+      try {
+        const snap = await ref.get();
+        if (!alive) return;
+        if (snap.exists) { setRoomMeta(snap.data()); setRoomState("ok"); return; }
+        await ref.set(claim);                       // 沒人用過 → 認領
+        if (!alive) return;
+        setRoomMeta(claim); setRoomState("ok");
+        flash("這間房是你的了，可以在「房間成員」加人");
+      } catch {
+        try {
+          await ref.set(claim);                     // 讀不到有兩種可能，這裡確認是不是空房
+          if (!alive) return;
+          setRoomMeta(claim); setRoomState("ok");
+          flash("這間房是你的了，可以在「房間成員」加人");
+        } catch {
+          if (alive) setRoomState("denied");        // 房間有人，而且不是你
+        }
+      }
+    })();
+
+    return () => { alive = false; };
+  }, [user, room, myEmail]);
+
+  /* 訂閱資料（進得去才訂） */
+  useEffect(() => {
+    if (roomState !== "ok") return;
+    const offA = col().onSnapshot(
+      (snap) => {
+        const list = snap.docs.map(d => {
+          const x = { id: d.id, ...d.data() };
+          return { ...x, cat: CATS.includes(x.cat) ? x.cat : deriveCat(x) };
+        });
+        list.sort((a,b) => (b.seenAt||"").localeCompare(a.seenAt||""));
+        setGigs(list);
+        setReady(true);
+      },
+      () => { flash("讀不到資料，檢查 Firestore 規則"); setReady(true); }
+    );
+    const offB = profileDoc().onSnapshot((d) => {
+      if (d.exists) setProfile({ ...DEFAULT_PROFILE, ...d.data() });
+    });
+    const offC = roomDoc().onSnapshot(
+      (d) => { if (d.exists) setRoomMeta(d.data()); },
+      () => setRoomState("denied")                  // 被房主移出名單，即時反應
+    );
+    return () => { offA(); offB(); offC(); };
+  }, [roomState, room]);
+
+  /* 成員名單 */
+  const addMember = async () => {
+    const e = newMember.trim().toLowerCase();
+    if (!e) return;
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(e)) return flash("這不像一個信箱");
+    if (members.includes(e)) return flash("這個人已經在名單上了");
+    try {
+      await roomDoc().update({ memberEmails: [...members, e] });
+      setNewMember(""); flash(`加了 ${e}`);
+    } catch { flash("加不進去，只有房主能改名單"); }
+  };
+
+  const removeMember = async (e) => {
+    if (e === myEmail) return flash("不能把自己移掉");
+    try {
+      await roomDoc().update({ memberEmails: members.filter(x => x !== e) });
+      flash(`移掉了 ${e}`);
+    } catch { flash("改不了，只有房主能改名單"); }
+  };
+
+  const profileText = useMemo(() => profileToText(profile), [profile]);
+  const cardText = useMemo(() => [profile.name, "", profile.intro,
+    profile.portfolio ? `\n作品集：${profile.portfolio}` : "",
+    profile.contact && profile.contact.trim() ? `\n${profile.contact.trim()}` : ""
+  ].filter(x=>x!=="").join("\n"), [profile]);
+
+  const saveProfile = async (obj) => { setProfile(obj); await profileDoc().set(obj, { merge:true }); };
+  const update = (id, patch) => col().doc(id).update(patch);
+  const remove = (id) => col().doc(id).delete();
+  const markSent = (g) => { update(g.id, { status:S.SENT, sentAt:today() }); setOpenId(null); flash(`「${g.title.slice(0,10)}」投出去了`); };
+
+  const copy = async (text, msg) => {
+    try { await navigator.clipboard.writeText(text); flash(msg || "複製好了"); }
+    catch { flash("複製不了，長按選取吧"); }
+  };
+
+  const addMany = async (arr) => {
+    const batch = db.batch();
+    arr.forEach(g => { const { id, ...rest } = g; batch.set(col().doc(id), rest); });
+    await batch.commit();
+  };
+
+  /* 匯入／匯出 */
+  const exportJSON = () => {
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(new Blob([JSON.stringify({ gigs, profile }, null, 2)], { type:"application/json" }));
+    a.download = `留鼠看_${today()}.json`;
+    a.click();
+    flash("備份下載了");
+  };
+  const importJSON = async (file) => {
+    try {
+      const text = await file.text();
+      const d = JSON.parse(text);
+      const arr = Array.isArray(d) ? d : d.gigs;
+      if (!Array.isArray(arr) || !arr.length) return flash("這個檔案裡沒有案件");
+      await addMany(arr.map(g => ({ ...g, id: g.id || `i${Date.now()}${Math.random().toString(36).slice(2,7)}` })));
+      if (d.profile) await saveProfile({ ...DEFAULT_PROFILE, ...d.profile });
+      flash(`匯入了 ${arr.length} 件`);
+    } catch { flash("讀不了這個檔案"); }
+  };
+
+  /* 收案子 */
+  const parseGigs = async () => {
+    if (!raw.trim()) return;
+    setBusy(true); setError("");
+    const prompt = `你是接案助理。使用者會貼上一段從社群（Threads、IG、FB 社團、LINE 群、外包平台）看到的接案資訊，可能一次有好幾個案子混在一起，也可能只有網址。請拆成結構化資料。
+
+今天是 ${today()}。
+
+接案者的背景（拿來判斷適合度）：
+${profileText}
+
+使用者貼上的內容：
+"""
+${raw}
+"""
+
+規則：
+- 一個案子一個物件。判斷不出任何案子就回傳 []。
+- 只有網址時可用網路搜尋補齊；查不到的欄位留空字串，不要編造預算或條件。
+- 全部用繁體中文、台灣用語。
+- 只輸出 JSON 陣列本身，前後不要有任何說明文字或 markdown 標記。
+
+每個物件的欄位：
+{"title":"案件名稱，20字內","client":"案主或品牌","source":"哪裡看到的","type":"細分類型，例如 短影音剪輯／課程長片／字幕／動態圖卡","cat":"片型，只能填 長片 或 短影片 或 混合 或 其他。3分鐘以內的直式短影音算短影片；課程、Podcast、訪談、紀錄等完整長度影片算長片；同時要交長片又要切短版的算混合；純圖卡、字幕、腳本等算其他","budget":"預算，照原文寫","term":"長期合作 或 短期／單次 或 沒註明","points":["條件重點，最多4條，每條20字內"],"link":"網址，原文有就一定要填","contact":"聯絡方式","deadline":"有寫截止或開工日就填 YYYY-MM-DD，沒有就空字串","fit":1到5的整數,"fitReason":"適不適合的理由，25字內","notes":"其他要注意的，沒有就空字串"}`;
+
+    try {
+      const text = await ask(prompt, true);
+      const s = text.indexOf("["), e = text.lastIndexOf("]");
+      if (s === -1 || e === -1) throw new Error("格式不對");
+      const arr = JSON.parse(text.slice(s, e+1));
+      if (!Array.isArray(arr) || !arr.length) { setError("這段看不出案子。多貼一點內容試試。"); setBusy(false); return; }
+      const now = Date.now();
+      const added = arr.map((g,i) => {
+        const o = {
+          id: `g${now}${i}`,
+          title: g.title || "未命名案件",
+          client: g.client||"", source: g.source||"", type: g.type||"未分類",
+          budget: g.budget||"",
+          term: TERMS.includes(g.term) ? g.term : "沒註明",
+          points: Array.isArray(g.points) ? g.points.slice(0,4) : [],
+          link: g.link||"", contact: g.contact||"",
+          deadline: /^\d{4}-\d{2}-\d{2}$/.test(g.deadline||"") ? g.deadline : "",
+          fit: Number(g.fit) >= 1 && Number(g.fit) <= 5 ? Number(g.fit) : 3,
+          fitReason: g.fitReason||"", notes: g.notes||"",
+          status: S.NEW, sentAt:"", pitch:"", seenAt: today(),
+        };
+        o.cat = CATS.includes(g.cat) ? g.cat : deriveCat(o);
+        return o;
+      });
+      await addMany(added);
+      setRaw(""); setTip(""); setShowDrop(false);
+      flash(`收進來 ${added.length} 件`);
+    } catch (err) {
+      setError(`整理失敗：${err.message}。再按一次試試。`);
+    }
+    setBusy(false);
+  };
+
+  const writePitch = async (g) => {
+    setPitchBusy(g.id);
+    try {
+      const text = await ask(`幫接案者寫一則要傳給案主的投遞訊息。
+
+接案者：
+${profileText}
+
+案件：
+名稱：${g.title}／案主：${g.client}／類型：${g.type}
+預算：${g.budget}／合作型態：${g.term}
+條件：${(g.points||[]).join("、")}
+備註：${g.notes}
+
+規則：
+- 繁體中文台灣用語，口語但專業，120到180字。
+- 開頭直接講看到哪則貼文、自己能怎麼接住這個需求，不要罐頭開場。
+- 中間提一個跟這個案子有關的具體做法或能力。
+- 結尾一定要附上作品集連結與可回覆的聯絡方式，照原文放不要改寫或省略。
+- 最後給一個明確的下一步。
+- 只輸出訊息本文。`);
+      await update(g.id, { pitch: text });
+    } catch (err) { flash(`沒寫出來：${err.message}`); }
+    setPitchBusy(null);
+  };
+
+  /* 分區 */
+  const pending = useMemo(() => gigs.filter(g => PENDING.includes(g.status)), [gigs]);
+  const live = useMemo(() => gigs.filter(g => LIVE.includes(g.status))
+    .sort((a,b) => (b.sentAt||"").localeCompare(a.sentAt||"")), [gigs]);
+  const past = useMemo(() => gigs.filter(g => PAST.includes(g.status))
+    .sort((a,b) => (b.sentAt||b.seenAt||"").localeCompare(a.sentAt||a.seenAt||"")), [gigs]);
+
+  const pickTop = async () => {
+    setTipBusy(true);
+    const brief = pending.map(g => `${g.title}｜${g.cat}｜${g.budget||"沒寫預算"}｜${g.term}｜${(g.points||[]).join("、")}`).join("\n");
+    try {
+      setTip(await ask(`這是一位剪輯師的背景：\n${profileText}\n\n還沒投的案子：\n${brief}\n\n從裡面挑最值得優先投的 2 到 3 件，用繁體中文台灣用語寫成一小段話（80字內），格式像：「先看這幾件：一、〇〇（理由）。二、〇〇（理由）。」理由要具體。只輸出這段話。`));
+    } catch (err) { flash(`挑不出來：${err.message}`); }
+    setTipBusy(false);
+  };
+
+  const grouped = useMemo(() => {
+    const keyOf = g => groupBy==="合作型態" ? g.term : groupBy==="片型" ? (g.cat||"其他") : (g.seenAt||"");
+    const map = new Map();
+    pending.forEach(g => { const k = keyOf(g); if(!map.has(k)) map.set(k, []); map.get(k).push(g); });
+    let keys = [...map.keys()];
+    if (groupBy==="合作型態") keys.sort((a,b)=>TERMS.indexOf(a)-TERMS.indexOf(b));
+    else if (groupBy==="片型") keys.sort((a,b)=>CATS.indexOf(a)-CATS.indexOf(b));
+    else keys.sort().reverse();
+    keys.forEach(k => map.get(k).sort((a,b)=>b.fit-a.fit));
+    return keys.map(k => ({ key:k, label: groupBy==="收到日期" ? dateLabel(k) : k, items: map.get(k) }));
+  }, [pending, groupBy]);
+
+  const digestText = useMemo(() => {
+    const L = [`留鼠看｜${md(today())} 整理　還沒投 ${pending.length} 件`];
+    if (tip) L.push("", tip);
+    grouped.forEach(({label, items}) => {
+      L.push("", `━━ ${label}（${items.length}件）━━`);
+      items.forEach((g,i) => {
+        L.push("", `${i+1}. ${g.title}`);
+        if (g.cat && groupBy!=="片型") L.push(`　片型：${g.cat}`);
+        if (g.type) L.push(`　類型：${g.type}`);
+        if (g.budget) L.push(`　預算：${g.budget}`);
+        if (g.term!=="沒註明" && groupBy!=="合作型態") L.push(`　合作：${g.term}`);
+        if (g.points && g.points.length) L.push(`　條件：${g.points.join("・")}`);
+        const from = [g.client, g.source].filter(Boolean).join("・");
+        if (from) L.push(`　來源：${from}`);
+        if (g.contact) L.push(`　聯絡：${g.contact}`);
+        if (g.link) L.push(`　${href(g.link)}`);
+      });
+    });
+    if (live.length){
+      L.push("", "━━ 投出去等消息 ━━");
+      live.forEach(g => L.push(`・${g.title}（${g.status}・${md(g.sentAt)} 投）`));
+    }
+    L.push("", "— 有興趣的回我編號，我把細節找出來 —");
+    return L.join("\n");
+  }, [pending, grouped, tip, groupBy, live]);
+
+  if (user === undefined) return <div className="gate"><p className="muted">檢查登入狀態…</p></div>;
+  if (user === null) return <SignIn err={authErr} busy={signingIn} onSignIn={signIn} />;
+  if (!room) return <Gate onEnter={(c)=>{ localStorage.setItem("lsk:room", c); setRoom(c); }} />;
+  if (roomState === "checking") return <div className="gate"><p className="muted">看看這間房進不進得去…</p></div>;
+  if (roomState === "denied")
+    return <Denied room={room} email={myEmail} onChangeRoom={changeRoom} onSignOut={signOut} />;
+
+  const Item = ({ g, i }) => {
+    const open = openId === g.id;
+    return (
+      <div className={`item ${open?"open":""}`}>
+        <span className="no">{i+1}</span>
+        <div className="body">
+          <div className="it-top">
+            {g.link
+              ? <a className="it-t link" href={href(g.link)} target="_blank" rel="noreferrer">{g.title}<span className="ext">↗</span></a>
+              : <span className="it-t">{g.title}</span>}
+            <span className="bars" title={`適合度 ${g.fit}／5`}>
+              {[1,2,3,4,5].map(n => <i key={n} className={n<=g.fit?"f":""} />)}
+            </span>
+          </div>
+          <div className="kv">
+            {g.budget && <span className="tag money">{g.budget}</span>}
+            {groupBy!=="片型" && g.cat && <span className="tag cat">{g.cat}</span>}
+            {g.type && <span className="tag">{g.type}</span>}
+            {groupBy!=="合作型態" && g.term==="長期合作" && <span className="tag">長期</span>}
+            {g.deadline && <span className="tag">{md(g.deadline)} 前</span>}
+          </div>
+          {g.points && g.points.length>0 && <div className="cond">{g.points.join("・")}</div>}
+          <div className="from">
+            {[g.client,g.source].filter(Boolean).join("・")}
+            {g.contact ? `　聯絡：${g.contact}` : ""}
+          </div>
+          <div className="acts">
+            <button className="go" onClick={()=>markSent(g)}>投了 ✓</button>
+            {g.status===S.NEW
+              ? <button className="lnk" onClick={()=>update(g.id,{status:S.WANT})}>標成想投</button>
+              : <button className="lnk" onClick={()=>update(g.id,{status:S.NEW})}>取消想投</button>}
+            {g.link && <a className="lnk" href={href(g.link)} target="_blank" rel="noreferrer">看原貼文 ↗</a>}
+            <button className="lnk" onClick={()=>setOpenId(open?null:g.id)}>{open?"收起":"投遞訊息與備註"}</button>
+            <button className="lnk dim" onClick={()=>update(g.id,{status:S.SKIP})}>跳過</button>
+          </div>
+        </div>
+        {g.status===S.WANT && <span className="want">想投</span>}
+        {open && (
+          <div className="panel">
+            <div>
+              <span className="lbl">適合度理由</span>
+              <p>{g.fitReason || "沒有判斷理由"}</p>
+              <span className="lbl">片型（分錯可以改）</span>
+              <div className="catpick">
+                {CATS.map(c => <button key={c} className={`chip ${g.cat===c?"on":""}`} onClick={()=>update(g.id,{cat:c})}>{c}</button>)}
+              </div>
+              <span className="lbl">備註</span>
+              <textarea className="paper-ta note" defaultValue={g.notes}
+                placeholder="投了什麼、對方回什麼、下次記得問什麼…"
+                onBlur={e=>update(g.id,{notes:e.target.value})} />
+            </div>
+            <div>
+              <div className="pitch-head">
+                <span className="lbl">投遞訊息</span>
+                <button className="chip" onClick={()=>writePitch(g)} disabled={pitchBusy===g.id}>
+                  {pitchBusy===g.id ? "寫中…" : g.pitch ? "重寫一版" : "幫鼠寫一封"}
+                </button>
+              </div>
+              <textarea className="paper-ta pitch" value={g.pitch||""}
+                placeholder="按上面那顆，會照鼠的名片寫一封可以直接傳的訊息。也可以自己改。"
+                onChange={e=>setGigs(p=>p.map(x=>x.id===g.id?{...x,pitch:e.target.value}:x))}
+                onBlur={e=>update(g.id,{pitch:e.target.value})} />
+              <div className="pfoot">
+                <button className="chip" onClick={()=>copy(g.pitch,"訊息複製好了")} disabled={!g.pitch}>複製訊息</button>
+                <button className="chip on" onClick={()=>markSent(g)}>傳出去了，標已投遞</button>
+                <button className="chip del" onClick={()=>remove(g.id)}>刪掉</button>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  return (
+    <div>
+      <header className="hd">
+        <div>
+          <h1>留鼠看，養活自己</h1>
+          <p className="sub">社群上刷到的案子丟進來，整理成一篇，不用再往上滑 LINE。</p>
+        </div>
+        <div className="hd-btns">
+          <button className="ghost" onClick={()=>setShowMembers(true)}>
+            房間成員<em className="cnt">{members.length}</em>
+          </button>
+          <button className="ghost" onClick={()=>{setEditCard(false); setShowCard(true);}}>
+            鼠的名片
+            {!(profile.contact||"").replace(/[\s：:]/g,"") && <span className="warn" title="還沒填聯絡方式">•</span>}
+          </button>
+          <button className="solid" onClick={()=>setShowDrop(v=>!v)}>{showDrop?"收起來":"＋ 貼新案子"}</button>
+        </div>
+      </header>
+
+      {showDrop && (
+        <section className="drop">
+          <textarea value={raw} onChange={e=>setRaw(e.target.value)} rows={4} autoFocus
+            placeholder={"把社群上看到的整段貼過來，一次貼好幾則也可以。\nThreads 貼文、FB 社團徵人、IG 限動文字、單一網址都吃。"} />
+          <div className="drop-foot">
+            <span className="sm muted">只有網址時會上網查一下，會多等幾秒。</span>
+            <button className="solid" onClick={parseGigs} disabled={busy||!raw.trim()}>{busy?"整理中…":"收進來"}</button>
+          </div>
+          {error && <p className="err">{error}</p>}
+        </section>
+      )}
+
+      <div className="tally">
+        <span className="tally-i"><i style={{background:COLOR[S.NEW]}} />還沒投 {pending.length}</span>
+        <span className="tally-i"><i style={{background:COLOR[S.SENT]}} />等消息 {live.length}</span>
+        <span className="tally-i"><i style={{background:COLOR[S.DEAL]}} />成交 {gigs.filter(g=>g.status===S.DEAL).length}</span>
+        <span className="tally-i muted">過去紀錄 {past.length}</span>
+        <span className="sync muted">房號 <b>{room}</b>
+          <button className="lnk dim" onClick={changeRoom}>換房號</button>
+          <span className="who">{myEmail}</span>
+          <button className="lnk dim" onClick={signOut}>登出</button>
+        </span>
+      </div>
+
+      {!ready && <p className="muted pad">連線中…</p>}
+
+      {ready && (
+        <>
+          <div className="sheet-bar">
+            <div className="seg">
+              {["合作型態","片型","收到日期"].map(k => (
+                <button key={k} className={groupBy===k?"on":""} onClick={()=>setGroupBy(k)}>照{k}分</button>
+              ))}
+            </div>
+            <div className="sheet-acts">
+              <button className="mini" onClick={()=>fileRef.current.click()}>匯入</button>
+              <button className="mini" onClick={exportJSON} disabled={!gigs.length}>備份</button>
+              <button className="mini" onClick={pickTop} disabled={tipBusy||!pending.length}>{tipBusy?"挑選中…":"挑幾件先投"}</button>
+              <button className="solid sm2" onClick={()=>copy(digestText,"整篇複製好了，貼給鼠")}>複製整篇</button>
+            </div>
+          </div>
+          <input ref={fileRef} type="file" accept="application/json" style={{display:"none"}}
+            onChange={e=>{ const f=e.target.files[0]; if(f) importJSON(f); e.target.value=""; }} />
+
+          <article className="sheet">
+            <div className="sheet-head">
+              <h2>留鼠看</h2>
+              <span>{md(today())} 整理　還沒投 {pending.length} 件</span>
+            </div>
+
+            {tip && <p className="tip">{tip}</p>}
+            {!gigs.length && <p className="muted pad">還沒有案子。按右上角「＋ 貼新案子」，或按「匯入」把備份檔讀進來。</p>}
+            {gigs.length>0 && !pending.length && <p className="muted pad">還沒投的都處理完了。</p>}
+
+            {grouped.map(({key,label,items}) => (
+              <div key={key} className="grp">
+                <h3>{label}<em>{items.length} 件</em></h3>
+                {items.map((g,i) => <Item key={g.id} g={g} i={i} />)}
+              </div>
+            ))}
+
+            {live.length>0 && (
+              <div className="grp live">
+                <h3>投出去了，等消息<em>{live.length} 件</em></h3>
+                {live.map(g => {
+                  const d = ago(g.sentAt), cold = g.status===S.SENT && d>=14;
+                  return (
+                    <div key={g.id} className="lrow">
+                      <div className="lmain">
+                        <span className="pin" style={{background:COLOR[g.status]}} />
+                        {g.link
+                          ? <a className="lt link" href={href(g.link)} target="_blank" rel="noreferrer">{g.title}<span className="ext">↗</span></a>
+                          : <span className="lt">{g.title}</span>}
+                        <span className="lmeta">
+                          {g.status}・{md(g.sentAt)} 投・{d===0?"今天":`${d} 天前`}
+                          {cold && <b className="cold">　已經超過兩週沒消息</b>}
+                        </span>
+                      </div>
+                      <div className="lacts">
+                        {g.status===S.SENT && <button className="chip" onClick={()=>update(g.id,{status:S.ASK})}>對方回了</button>}
+                        <button className="chip deal" onClick={()=>update(g.id,{status:S.DEAL})}>成交</button>
+                        <button className="chip" onClick={()=>update(g.id,{status:S.NONE})}>無回應</button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            {past.length>0 && (
+              <div className="grp archive">
+                <h3 className="clickable" onClick={()=>setShowPast(v=>!v)}>
+                  <span>{showPast?"▾":"▸"} 過去投遞紀錄</span><em>{past.length} 件</em>
+                </h3>
+                {showPast && past.map(g => (
+                  <div key={g.id} className="arow">
+                    <span className="adate">{md(g.sentAt||g.seenAt)}</span>
+                    {g.link
+                      ? <a className="at link" href={href(g.link)} target="_blank" rel="noreferrer">{g.title}</a>
+                      : <span className="at">{g.title}</span>}
+                    <span className="abudget">{g.budget}</span>
+                    <span className="atag" style={{color:COLOR[g.status], borderColor:COLOR[g.status]+"66"}}>{g.status}</span>
+                    <button className="lnk dim" onClick={()=>update(g.id,{status:S.NEW})}>放回清單</button>
+                    <button className="lnk dim" onClick={()=>remove(g.id)}>刪</button>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {(pending.length>0 || live.length>0) && <p className="foot">— 有興趣的回編號，我把細節找出來 —</p>}
+          </article>
+        </>
+      )}
+
+      {showMembers && (
+        <div className="mask" onClick={()=>setShowMembers(false)}>
+          <div className="modal" onClick={e=>e.stopPropagation()}>
+            <div className="modal-top"><h2>房間成員</h2></div>
+            <p className="sm muted">
+              名單上的人用 Google 登入、輸入房號 <b>{room}</b> 就進得來，看到的是同一份清單。
+              不在名單上的人就算知道房號也進不來。
+            </p>
+
+            <div>
+              {members.map(e => (
+                <div key={e} className="mem">
+                  <span className="mem-e">{e}</span>
+                  {roomMeta && roomMeta.owner === user.uid && e === myEmail
+                    ? <span className="mem-tag">房主・你</span>
+                    : e === myEmail ? <span className="mem-tag">你</span> : null}
+                  {isOwner && e !== myEmail &&
+                    <button className="lnk dim" onClick={()=>removeMember(e)}>移除</button>}
+                </div>
+              ))}
+            </div>
+
+            {isOwner ? (
+              <>
+                <div className="mem-add">
+                  <input value={newMember} onChange={e=>setNewMember(e.target.value)}
+                    onKeyDown={e=>e.key==="Enter"&&addMember()}
+                    placeholder="鼠的 Gmail" autoCapitalize="none" />
+                  <button className="solid" onClick={addMember} disabled={!newMember.trim()}>加進來</button>
+                </div>
+                <span className="hint sm muted">
+                  要填他登入時用的那個 Google 信箱，填錯的話他會看到「這間房不是你的」。
+                </span>
+              </>
+            ) : (
+              <p className="sm muted">只有房主能改名單。</p>
+            )}
+
+            <div className="modal-foot">
+              <span className="sm muted">{isOwner ? "你是這間房的房主" : "你是成員"}</span>
+              <button className="solid" onClick={()=>setShowMembers(false)}>好了</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showCard && (
+        <div className="mask" onClick={()=>setShowCard(false)}>
+          <div className="modal" onClick={e=>e.stopPropagation()}>
+            {!editCard ? (
+              <>
+                <div className="modal-top">
+                  <h2>鼠的名片</h2>
+                  <button className="mini" onClick={()=>{setDraft(profile); setEditCard(true);}}>編輯</button>
+                </div>
+                <p className="sm muted">寫得越具體，判斷適合度跟寫投遞訊息就越像本人。</p>
+                <div className="card">
+                  <div className="card-name">{profile.name || "還沒填名字"}</div>
+                  <pre className="card-intro">{profile.intro || "還沒填會做什麼"}</pre>
+                  <div className="card-line">
+                    <span className="lbl">作品集</span>
+                    {profile.portfolio
+                      ? <a className="link" href={href(profile.portfolio)} target="_blank" rel="noreferrer">{profile.portfolio}<span className="ext">↗</span></a>
+                      : <span className="hint">還沒放連結，投遞訊息會少一塊</span>}
+                  </div>
+                  <div className="card-line">
+                    <span className="lbl">可回覆的聯絡方式</span>
+                    {(profile.contact||"").replace(/[\s：:]/g,"")
+                      ? <pre className="card-contact">{profile.contact.trim()}</pre>
+                      : <span className="hint">還沒填，案主收到訊息會不知道要回哪裡</span>}
+                  </div>
+                </div>
+                <div className="modal-foot">
+                  <button className="ghost" onClick={()=>copy(cardText,"名片複製好了")}>複製名片</button>
+                  <button className="solid" onClick={()=>setShowCard(false)}>好了</button>
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="modal-top"><h2>編輯名片</h2></div>
+                <label className="fld">
+                  <span className="lbl">名字／頭銜</span>
+                  <input value={draft.name} onChange={e=>setDraft({...draft,name:e.target.value})} placeholder="鼠｜影片剪輯師" />
+                </label>
+                <label className="fld">
+                  <span className="lbl">會做什麼、用什麼軟體、報價</span>
+                  <textarea rows={6} value={draft.intro} onChange={e=>setDraft({...draft,intro:e.target.value})} />
+                </label>
+                <label className="fld">
+                  <span className="lbl">作品集連結</span>
+                  <input value={draft.portfolio} onChange={e=>setDraft({...draft,portfolio:e.target.value})}
+                    placeholder="https://…（YouTube、Notion、雲端資料夾都可以）" />
+                </label>
+                <label className="fld">
+                  <span className="lbl">可回覆的聯絡方式</span>
+                  <textarea rows={4} value={draft.contact} onChange={e=>setDraft({...draft,contact:e.target.value})}
+                    placeholder={"Email：\nIG：\nLINE ID："} />
+                  <span className="hint">這幾行會原封不動放進每封投遞訊息的結尾。</span>
+                </label>
+                <div className="modal-foot">
+                  <button className="ghost" onClick={()=>setDraft(DEFAULT_PROFILE)}>還原範本</button>
+                  <div className="foot-r">
+                    <button className="ghost" onClick={()=>setEditCard(false)}>取消</button>
+                    <button className="solid" onClick={()=>{saveProfile(draft); setEditCard(false); flash("名片存好了");}}>存起來</button>
+                  </div>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
+
+      {toast && <div className="toast">{toast}</div>}
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", () => navigator.serviceWorker.register("./sw.js").catch(()=>{}));
+}
+</script>
+</body>
+</html>

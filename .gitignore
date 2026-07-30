@@ -1,0 +1,10 @@
+.firebase/
+.wrangler/
+node_modules/
+*.log
+.DS_Store
+留鼠看_*.json
+
+# Worker 是另外用 wrangler 部署的，不要進 GitHub Pages
+# （本機這個資料夾要留著，它是部署來源）
+worker/

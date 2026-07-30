@@ -1,0 +1,13 @@
+{
+  "name": "留鼠看，養活自己",
+  "short_name": "留鼠看",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#16161A",
+  "theme_color": "#16161A",
+  "lang": "zh-Hant",
+  "icons": [
+    { "src": "./icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "./icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" }
+  ]
+}
