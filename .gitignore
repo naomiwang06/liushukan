@@ -5,6 +5,5 @@ node_modules/
 .DS_Store
 留鼠看_*.json
 
-# Worker 是另外用 wrangler 部署的，不要進 GitHub Pages
-# （本機這個資料夾要留著，它是部署來源）
-worker/
+# worker/ 要納入版控（裡面沒有機密，金鑰都在 Cloudflare 的 secret）。
+# 不讓它被當網站檔案送出去是靠 firebase.json 的 ignore 清單，不是靠這裡。

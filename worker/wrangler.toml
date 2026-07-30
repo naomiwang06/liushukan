@@ -1,0 +1,20 @@
+name = "liushukan-api"
+main = "worker.js"
+compatibility_date = "2025-01-01"
+
+[vars]
+# 允許的來源網域，只到網域為止、不含路徑、結尾不加斜線，多個用逗號分隔
+# to-safe-tobashi.web.app 是 Firebase Hosting 的網域（Google 登入預設就授權它）
+ALLOW_ORIGINS = "https://to-safe-tobashi.web.app,https://naomiwang06.github.io"
+# 要用哪家：gemini（免費層，不用綁卡）或 anthropic（付費，品質較好）
+PROVIDER = "gemini"
+
+# 模型代號。留空會用該供應商的預設值
+#   gemini    → gemini-2.5-flash（想更新可換 gemini-3.5-flash / gemini-3.6-flash）
+#   anthropic → claude-sonnet-5（想更聰明可換 claude-opus-5，比較貴）
+MODEL = "gemini-2.5-flash"
+
+# 這幾個不要寫在這裡，用指令設成祕密變數：
+#   npx wrangler secret put GEMINI_API_KEY
+#   npx wrangler secret put ANTHROPIC_API_KEY
+#   npx wrangler secret put APP_KEY
