@@ -1,4 +1,17 @@
 /**
+ * ⚠️ 已退役，沒有部署在線上。2026-07-30 從 Cloudflare 刪除。
+ *
+ * 這個 app 最後決定不接 AI：案子資料由手填，鼠點連結看原始貼文。
+ * 前端已經沒有 CONFIG.workerUrl，不會呼叫這裡。
+ *
+ * 留著這份檔案只是為了「哪天想接回 AI」時不用重寫。要復活的話：
+ *   1. npx wrangler deploy --config worker/wrangler.toml
+ *   2. npx wrangler secret put GEMINI_API_KEY（或 ANTHROPIC_API_KEY）
+ *   3. npx wrangler secret put APP_KEY
+ *   4. 把 Worker 網址和同一組 APP_KEY 填回 index.html 的 window.CONFIG
+ *   5. 前端要重新加上呼叫它的程式碼（已在 8d1bd13 那個 commit 移除）
+ *
+ * ────────────────────────────────────────────────
  * 留鼠看 — AI 中繼站（可切換供應商）
  *
  * 前端不放金鑰，只打這個 Worker。
