@@ -111,6 +111,11 @@ a.link:hover{color:#8A6410; border-bottom-color:#8A6410;}
 .shot.sm{max-width:110px; margin:0;}
 .shotpick{display:flex; gap:10px; align-items:flex-start; margin-top:6px;}
 .shotpick p{margin:0 0 4px; word-break:break-all;}
+.shotpick .lnk{margin-right:10px;}
+.shotzone{margin-top:6px; padding:14px 12px; border:1px dashed #C6BEAA; border-radius:8px;
+  background:var(--panel2); display:flex; flex-direction:column; align-items:center; gap:5px; text-align:center;}
+.shotzone b{font-size:13px; color:var(--ink); font-weight:700;}
+.shotzone .chip{margin-top:3px;}
 .cond{font-size:12.5px; color:#4A463C; margin-top:5px;}
 .from{font-size:11.5px; color:var(--faint); margin-top:4px;}
 .acts{display:flex; gap:12px; align-items:center; margin-top:8px; flex-wrap:wrap;}
@@ -631,12 +636,39 @@ function App(){
     setBusy(true);
     try {
       const data = await shrinkImage(file);
-      setF({ shot: data, shotName: file.name });
+      setF({ shot: data, shotName: file.name || "貼上的截圖" });
       flash(`截圖好了（${Math.round(data.length / 1024)} KB）`);
     } catch (e) {
       flash(e.message === "too-big" ? "圖片太大，壓不下來，先自己裁一下" : "讀不了這張圖");
     }
     setBusy(false);
+  };
+
+  // 讓 paste 監聽永遠拿到最新的 pickShot，不會抓到舊 render 的版本
+  const pickShotRef = useRef(null);
+  pickShotRef.current = pickShot;
+
+  /* 表單開著的時候，整頁 Cmd+V 都能貼截圖 */
+  useEffect(() => {
+    if (!showDrop) return;
+    const onPaste = (e) => {
+      const items = [...((e.clipboardData && e.clipboardData.items) || [])];
+      const img = items.find(it => it.kind === "file" && /^image\//.test(it.type));
+      if (!img) return;                    // 貼文字就讓它正常進輸入框
+      const file = img.getAsFile();
+      if (!file) return;
+      e.preventDefault();
+      pickShotRef.current(file);
+    };
+    window.addEventListener("paste", onPaste);
+    return () => window.removeEventListener("paste", onPaste);
+  }, [showDrop]);
+
+  const dropShot = (e) => {
+    e.preventDefault();
+    const f = [...(e.dataTransfer.files || [])].find(x => /^image\//.test(x.type));
+    if (f) pickShot(f);
+    else flash("拖進來的不是圖片");
   };
 
   const addGig = async () => {
@@ -954,16 +986,22 @@ function App(){
                 <div>
                   <p className="sm muted">{form.shotName}（{Math.round(form.shot.length/1024)} KB）</p>
                   <button type="button" className="lnk dim" onClick={()=>setF({shot:"", shotName:""})}>移除</button>
+                  <button type="button" className="lnk dim" onClick={()=>shotRef.current.click()}>換一張</button>
                 </div>
               </div>
             ) : (
-              <>
+              <div className="shotzone" onDragOver={e=>e.preventDefault()} onDrop={dropShot}>
+                <b>直接按 ⌘V 貼上</b>
+                <span className="sm muted">或把圖片拖到這裡</span>
                 <button type="button" className="chip" onClick={()=>shotRef.current.click()} disabled={busy}>
-                  {busy ? "處理中…" : "選一張截圖"}
+                  {busy ? "處理中…" : "也可以選檔案"}
                 </button>
-                <span className="hint">會自動縮到 1400px 以內，鼠可以先看截圖再決定要不要點進網址。</span>
-              </>
+              </div>
             )}
+            <span className="hint">
+              Mac 截圖到剪貼簿是 <b>⌘⌃⇧4</b>（多按一個 Control，不然是存到桌面）。
+              會自動縮到 1400px 以內。
+            </span>
             <input ref={shotRef} type="file" accept="image/*" style={{display:"none"}}
               onChange={e=>{ const f=e.target.files[0]; if(f) pickShot(f); e.target.value=""; }} />
           </div>
